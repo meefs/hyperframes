@@ -217,6 +217,85 @@ jobs:
 
           echo "PASS: global install smoke test succeeded"
 
+  cli-smoke-required:
+    name: "CLI smoke (required)"
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Skip when no code changed
+        if: needs.changes.outputs.code != 'true'
+        run: echo "No code changes; CLI smoke required check passes."
+
+      - uses: actions/checkout@v4
+        if: needs.changes.outputs.code == 'true'
+        with:
+          lfs: true
+      - uses: oven-sh/setup-bun@v2
+        if: needs.changes.outputs.code == 'true'
+      - uses: actions/setup-node@v4
+        if: needs.changes.outputs.code == 'true'
+        with:
+          node-version: 22
+      - name: Install dependencies
+        if: needs.changes.outputs.code == 'true'
+        run: bun install --frozen-lockfile
+      - name: Build monorepo
+        if: needs.changes.outputs.code == 'true'
+        run: bun run build
+
+      - name: Smoke-test CLI from monorepo source
+        if: needs.changes.outputs.code == 'true'
+        run: |
+          rm -rf /tmp/hf-cli-inside
+
+          bun run --filter @hyperframes/cli dev -- init /tmp/hf-cli-inside \
+            --example blank \
+            --non-interactive \
+            --skip-skills
+
+          bun run --filter @hyperframes/cli dev -- lint /tmp/hf-cli-inside
+          bun run --filter @hyperframes/cli dev -- validate /tmp/hf-cli-inside --timeout 1000
+          bun run --filter @hyperframes/cli dev -- render /tmp/hf-cli-inside \
+            --quality draft \
+            --workers 1 \
+            --strict-all \
+            --output /tmp/hf-cli-inside/renders/inside.mp4
+
+          test -s /tmp/hf-cli-inside/renders/inside.mp4
+
+      - name: Pack CLI tarball
+        if: needs.changes.outputs.code == 'true'
+        run: |
+          mkdir -p /tmp/hf-cli-pack
+          cd packages/cli
+          npm pack --pack-destination /tmp/hf-cli-pack
+
+      - name: Install packed CLI outside monorepo
+        if: needs.changes.outputs.code == 'true'
+        run: npm install -g --prefix /tmp/hf-cli-global /tmp/hf-cli-pack/hyperframes-cli-*.tgz
+
+      - name: Smoke-test packed CLI outside monorepo
+        if: needs.changes.outputs.code == 'true'
+        run: |
+          export PATH="/tmp/hf-cli-global/bin:$PATH"
+          rm -rf /tmp/hf-cli-outside
+
+          hyperframes init /tmp/hf-cli-outside \
+            --example blank \
+            --non-interactive \
+            --skip-skills
+
+          hyperframes lint /tmp/hf-cli-outside
+          hyperframes validate /tmp/hf-cli-outside --timeout 1000
+          hyperframes render /tmp/hf-cli-outside \
+            --quality draft \
+            --workers 1 \
+            --strict-all \
+            --output /tmp/hf-cli-outside/renders/outside.mp4
+
+          test -s /tmp/hf-cli-outside/renders/outside.mp4
+
   semantic-pr-title:
     name: Semantic PR title
     if: github.event_name == 'pull_request'
