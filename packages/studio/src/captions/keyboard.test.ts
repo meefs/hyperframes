@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shouldHandleCaptionNudgeKey } from "./CaptionOverlay";
+import { shouldHandleCaptionNudgeKey } from "./keyboard";
 
 function mockKeyboardEvent(
   key: string,
