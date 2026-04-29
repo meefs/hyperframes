@@ -251,6 +251,14 @@ function syncToStore(segmentId: string, el: HTMLElement, iframeWin: Window) {
 
 const HANDLE = 8;
 const ROTATION_OFFSET = 20; // px above the selection box
+const CAPTION_NUDGE_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
+
+type CaptionNudgeKeyEvent = Pick<KeyboardEvent, "altKey" | "ctrlKey" | "metaKey" | "key">;
+
+export function shouldHandleCaptionNudgeKey(event: CaptionNudgeKeyEvent): boolean {
+  if (event.metaKey || event.ctrlKey || event.altKey) return false;
+  return CAPTION_NUDGE_KEYS.has(event.key);
+}
 
 export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: CaptionOverlayProps) {
   const isEditMode = useCaptionStore((s) => s.isEditMode);
@@ -329,7 +337,7 @@ export const CaptionOverlay = memo(function CaptionOverlay({ iframeRef }: Captio
       const { selectedSegmentIds: sel, model: m } = useCaptionStore.getState();
       if (sel.size === 0 || !m) return;
       const arrow = e.key;
-      if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(arrow)) return;
+      if (!shouldHandleCaptionNudgeKey(e)) return;
 
       e.preventDefault();
       const step = e.shiftKey ? 10 : 1;
