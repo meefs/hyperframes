@@ -61,6 +61,10 @@ interface AppToast {
   tone: "error" | "info";
 }
 
+function getTimelineElementLabel(element: TimelineElement): string {
+  return element.label || element.id || element.tag;
+}
+
 const DEFAULT_TIMELINE_ASSET_DURATION: Record<TimelineAssetKind, number> = {
   image: 3,
   video: 5,
@@ -392,7 +396,7 @@ export function StudioApp() {
         return (
           <CompositionThumbnail
             previewUrl={`/api/projects/${pid}/preview/comp/${compSrc}`}
-            label={el.id || el.tag}
+            label={getTimelineElementLabel(el)}
             labelColor={style.label}
             accentColor={style.clip}
             selector={el.selector}
@@ -408,7 +412,7 @@ export function StudioApp() {
         return (
           <CompositionThumbnail
             previewUrl={activePreviewUrl}
-            label={el.id || el.tag}
+            label={getTimelineElementLabel(el)}
             labelColor={style.label}
             accentColor={style.clip}
             selector={el.selector}
@@ -445,7 +449,7 @@ export function StudioApp() {
           <AudioWaveform
             audioUrl={audioUrl}
             waveformUrl={waveformUrl}
-            label={el.id || el.tag}
+            label={getTimelineElementLabel(el)}
             labelColor={style.label}
           />
         );
@@ -458,7 +462,7 @@ export function StudioApp() {
         return (
           <VideoThumbnail
             videoSrc={mediaSrc}
-            label={el.id || el.tag}
+            label={getTimelineElementLabel(el)}
             labelColor={style.label}
             duration={el.duration}
           />
@@ -469,7 +473,7 @@ export function StudioApp() {
         return (
           <CompositionThumbnail
             previewUrl={`/api/projects/${pid}/preview`}
-            label={el.id || el.tag}
+            label={getTimelineElementLabel(el)}
             labelColor={style.label}
             accentColor={style.clip}
             selector={el.selector}
