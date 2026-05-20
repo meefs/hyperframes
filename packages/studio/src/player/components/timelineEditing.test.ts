@@ -4,7 +4,6 @@ import {
   buildPromptCopyText,
   buildTimelineElementAgentPrompt,
   buildTimelineAgentPrompt,
-  canOffsetTrimClipStart,
   getTimelineEditCapabilities,
   hasPatchableTimelineTarget,
   resolveBlockedTimelineEditIntent,
@@ -158,42 +157,6 @@ describe("resolveTimelineMove", () => {
   });
 });
 
-describe("canOffsetTrimClipStart", () => {
-  it("allows front trim for clips that carry playback offset metadata", () => {
-    expect(
-      canOffsetTrimClipStart({
-        tag: "div",
-        playbackStartAttr: "media-start",
-      }),
-    ).toBe(true);
-  });
-
-  it("allows front trim for media clips with source duration metadata", () => {
-    expect(
-      canOffsetTrimClipStart({
-        tag: "video",
-        sourceDuration: 12,
-      }),
-    ).toBe(true);
-  });
-
-  it("allows front trim for plain audio clips even before media-start exists", () => {
-    expect(
-      canOffsetTrimClipStart({
-        tag: "audio",
-      }),
-    ).toBe(true);
-  });
-
-  it("blocks front trim for generic motion clips", () => {
-    expect(
-      canOffsetTrimClipStart({
-        tag: "section",
-      }),
-    ).toBe(false);
-  });
-});
-
 describe("hasPatchableTimelineTarget", () => {
   it("returns true when the clip has a DOM id", () => {
     expect(hasPatchableTimelineTarget({ domId: "hero-card" })).toBe(true);
@@ -224,7 +187,7 @@ describe("getTimelineEditCapabilities", () => {
     });
   });
 
-  it("allows moving generic motion clips while keeping trims blocked", () => {
+  it("allows full editing of generic motion clips with authored timing", () => {
     expect(
       getTimelineEditCapabilities({
         tag: "section",
@@ -233,8 +196,8 @@ describe("getTimelineEditCapabilities", () => {
       }),
     ).toEqual({
       canMove: true,
-      canTrimStart: false,
-      canTrimEnd: false,
+      canTrimStart: true,
+      canTrimEnd: true,
     });
   });
 
@@ -285,7 +248,7 @@ describe("getTimelineEditCapabilities", () => {
     });
   });
 
-  it("allows move and end trim for patchable composition hosts", () => {
+  it("allows full editing for patchable composition hosts", () => {
     expect(
       getTimelineEditCapabilities({
         tag: "div",
@@ -295,7 +258,22 @@ describe("getTimelineEditCapabilities", () => {
       }),
     ).toEqual({
       canMove: true,
-      canTrimStart: false,
+      canTrimStart: true,
+      canTrimEnd: true,
+    });
+  });
+
+  it("allows full editing of explicitly authored generic elements", () => {
+    expect(
+      getTimelineEditCapabilities({
+        tag: "div",
+        duration: 4,
+        selector: "#hero-card",
+        timingSource: "authored",
+      }),
+    ).toEqual({
+      canMove: true,
+      canTrimStart: true,
       canTrimEnd: true,
     });
   });
@@ -575,6 +553,40 @@ describe("resolveTimelineResize", () => {
         0,
       ),
     ).toEqual({ start: 0.8, duration: 3.2, playbackStart: 0 });
+  });
+
+  it("trims generic element start without media offset", () => {
+    expect(
+      resolveTimelineResize(
+        {
+          start: 2,
+          duration: 4,
+          originClientX: 100,
+          pixelsPerSecond: 100,
+          minStart: 0,
+          maxEnd: 10,
+        },
+        "start",
+        200,
+      ),
+    ).toEqual({ start: 3, duration: 3, playbackStart: undefined });
+  });
+
+  it("extends generic element start leftward to time zero", () => {
+    expect(
+      resolveTimelineResize(
+        {
+          start: 1,
+          duration: 3,
+          originClientX: 100,
+          pixelsPerSecond: 100,
+          minStart: 0,
+          maxEnd: 10,
+        },
+        "start",
+        -200,
+      ),
+    ).toEqual({ start: 0, duration: 4, playbackStart: undefined });
   });
 });
 

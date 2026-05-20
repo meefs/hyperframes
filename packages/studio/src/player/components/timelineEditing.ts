@@ -201,18 +201,6 @@ export function hasPatchableTimelineTarget(input: { domId?: string; selector?: s
   return Boolean(input.domId || input.selector);
 }
 
-export function canOffsetTrimClipStart(input: {
-  tag: string;
-  playbackStart?: number;
-  playbackStartAttr?: "media-start" | "playback-start";
-  sourceDuration?: number;
-}): boolean {
-  if (input.playbackStartAttr != null) return true;
-  if (input.playbackStart != null) return true;
-  const normalizedTag = input.tag.toLowerCase();
-  return ["video", "audio"].includes(normalizedTag);
-}
-
 export function getTimelineEditCapabilities(input: {
   tag: string;
   duration: number;
@@ -237,8 +225,8 @@ export function getTimelineEditCapabilities(input: {
   const hasDeterministicWindow = isDeterministicTimelineWindow(input);
   return {
     canMove: canPatch && (hasDeterministicWindow || hasFiniteDuration),
-    canTrimEnd: canPatch && hasFiniteDuration && hasDeterministicWindow,
-    canTrimStart: canPatch && hasFiniteDuration && canOffsetTrimClipStart(input),
+    canTrimEnd: canPatch && hasFiniteDuration,
+    canTrimStart: canPatch && hasFiniteDuration,
   };
 }
 
