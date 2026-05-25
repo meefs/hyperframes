@@ -106,6 +106,7 @@ export interface InlineSubCompositionsResult {
   styles: string[];
   scripts: string[];
   externalScriptSrcs: string[];
+  scriptItems: Array<{ kind: "inline"; content: string } | { kind: "external"; src: string }>;
   externalLinks: { href: string; rel: string; crossorigin?: string }[];
   variablesByComp: Record<string, Record<string, unknown>>;
 }
@@ -160,6 +161,7 @@ export function inlineSubCompositions(
   const styles: string[] = [];
   const scripts: string[] = [];
   const externalScriptSrcs: string[] = [];
+  const scriptItems: InlineSubCompositionsResult["scriptItems"] = [];
   const externalLinks: { href: string; rel: string; crossorigin?: string }[] = [];
   const seenLinkHrefs = new Set<string>();
   const variablesByComp: Record<string, Record<string, unknown>> = {};
@@ -232,8 +234,11 @@ export function inlineSubCompositions(
       }
       for (const s of [...compDoc.head.querySelectorAll("script")]) {
         const externalSrc = (s.getAttribute("src") || "").trim();
-        if (externalSrc && !externalScriptSrcs.includes(externalSrc)) {
-          externalScriptSrcs.push(externalSrc);
+        if (externalSrc) {
+          if (!externalScriptSrcs.includes(externalSrc)) {
+            externalScriptSrcs.push(externalSrc);
+          }
+          scriptItems.push({ kind: "external", src: externalSrc });
         }
       }
       for (const link of [
@@ -271,19 +276,20 @@ export function inlineSubCompositions(
         if (!externalScriptSrcs.includes(externalSrc)) {
           externalScriptSrcs.push(externalSrc);
         }
+        scriptItems.push({ kind: "external", src: externalSrc });
       } else {
-        scripts.push(
-          scopeCompId
-            ? wrapScopedCompositionScript(
-                s.textContent || "",
-                scopeCompId,
-                scriptErrorLabel,
-                runtimeScope || undefined,
-                runtimeCompId || scopeCompId,
-                authoredRootId,
-              )
-            : `(function(){ try { ${s.textContent || ""} } catch (_err) { console.error(${JSON.stringify(scriptErrorLabel)}, _err); } })();`,
-        );
+        const wrappedScript = scopeCompId
+          ? wrapScopedCompositionScript(
+              s.textContent || "",
+              scopeCompId,
+              scriptErrorLabel,
+              runtimeScope || undefined,
+              runtimeCompId || scopeCompId,
+              authoredRootId,
+            )
+          : `(function(){ try { ${s.textContent || ""} } catch (_err) { console.error(${JSON.stringify(scriptErrorLabel)}, _err); } })();`;
+        scripts.push(wrappedScript);
+        scriptItems.push({ kind: "inline", content: wrappedScript });
       }
       s.remove();
     }
@@ -359,5 +365,5 @@ export function inlineSubCompositions(
     hostEl.removeAttribute("data-composition-src");
   }
 
-  return { styles, scripts, externalScriptSrcs, externalLinks, variablesByComp };
+  return { styles, scripts, externalScriptSrcs, scriptItems, externalLinks, variablesByComp };
 }
